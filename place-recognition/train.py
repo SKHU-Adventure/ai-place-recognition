@@ -2,12 +2,13 @@ import os
 import importlib
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.multiprocessing as mp
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 
-from setup import config
+from setup import config, seed_worker
 from utils.util_model import EmbedNet, TripletNet
 import utils.util_path as PATH
 
@@ -27,20 +28,20 @@ def main():
     train_sampler = DistributedSampler(train_dataset)
     test_sampler = DistributedSampler(test_dataset)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, config.batch_size, num_workers=config.num_workers, sampler=train_sampler, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, config.batch_size, num_workers=config.num_workers, sampler=test_sampler, pin_memory=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset, config.batch_size, num_workers=config.num_workers, sampler=train_sampler, pin_memory=True, worker_init_fn=seed_worker)
+    test_loader = torch.utils.data.DataLoader(test_dataset, config.batch_size, num_workers=config.num_workers, sampler=test_sampler, pin_memory=True, worker_init_fn=seed_worker)
 
     backbone = get_backbone(config.backbone)
     model = get_model(config.model)
     embed_net = EmbedNet(backbone, model)
     triplet_net = DDP(TripletNet(embed_net).to(device_id), device_ids=[device_id])
 
-    criterion = torch.nn.TripletMarginLoss(margin=0.1)
+    criterion = torch.nn.TripletMarginWithDistanceLoss(margin=0.1)
     optimizer = torch.optim.Adam(triplet_net.parameters(), lr=config.learning_rate)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
     os.makedirs(PATH.CHECKPOINT, exist_ok=True)
-    
+
     def train():
         triplet_net.train()
         total_loss = 0
@@ -56,9 +57,9 @@ def main():
 
     def validate():
         triplet_net.eval()
-        total_loss = 0
-        total_dist_pos = 0
-        total_dist_neg = 0
+        total_loss = 0.0
+        total_dist_pos = 0.0
+        total_dist_neg = 0.0
         num_samples = 0
 
         with torch.no_grad():
@@ -68,8 +69,8 @@ def main():
                 loss = criterion(anc_feat, pos_feat, neg_feat)
                 total_loss += loss.item()
 
-                total_dist_pos += nn.PairwiseDistance(anc_feat, pos_feat)
-                total_dist_neg += nn.PairwiseDistance(anc_feat, neg_feat)
+                total_dist_pos += torch.sum(F.pairwise_distance(anc_feat, pos_feat)).item()
+                total_dist_neg += torch.sum(F.pairwise_distance(anc_feat, neg_feat)).item()
 
                 num_samples += anc.size(0)
 
