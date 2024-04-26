@@ -12,6 +12,7 @@ from setup import config, seed_worker
 from utils.util_model import EmbedNet, TripletNet
 import utils.util_path as PATH
 
+from datasets import get_dataset
 from backbones import get_backbone
 from models import get_model
 
@@ -22,8 +23,8 @@ def main():
     device_id = config.gpu_ids[rank]
     torch.cuda.set_device(device_id)
 
-    train_dataset = getattr(importlib.import_module('datasets.'+config.data), 'CustomDataset')(config, config.train_data_path)
-    test_dataset = getattr(importlib.import_module('datasets.'+config.data), 'CustomDataset')(config, config.test_data_path)
+    train_dataset = get_dataset(config.data, config=config, data_path=config.train_data_path)
+    test_dataset = get_dataset(config.data, config=config, data_path=config.test_data_path)
 
     train_sampler = DistributedSampler(train_dataset)
     test_sampler = DistributedSampler(test_dataset)
@@ -36,9 +37,8 @@ def main():
     embed_net = EmbedNet(backbone, model)
     triplet_net = DDP(TripletNet(embed_net).to(device_id), device_ids=[device_id])
 
-    criterion = torch.nn.TripletMarginWithDistanceLoss(margin=0.1)
+    criterion = torch.nn.TripletMarginWithDistanceLoss(margin=config.margin, distance_function=F.pairwise_distance)
     optimizer = torch.optim.Adam(triplet_net.parameters(), lr=config.learning_rate)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
     os.makedirs(PATH.CHECKPOINT, exist_ok=True)
 
@@ -81,18 +81,18 @@ def main():
         return avg_loss, avg_dist_pos, avg_dist_neg
 
     for epoch in range(1, config.total_epoch):
-        print(f'Epoch {epoch} Started')
+        print(f'[GPU #{rank}] Epoch {epoch} Started')
         train_sampler.set_epoch(epoch)
         train_loss = train()
-        print(f'Epoch {epoch} Finished: Train loss {train_loss:.4f}')
-
-        print(f'Validation Started')
         avg_loss, avg_dist_pos, avg_dist_neg = validate()
-        print(f'Validation Finished: Validation loss {avg_loss:.4f}')
-        print(f'Average distance with positive sample: {avg_dist_pos:.4f}')
-        print(f'Average distance with negative sample: {avg_dist_neg:.4f}')
+        print(f'[GPU #{rank}] Epoch {epoch} Finished')
+        print(f'[GPU #{rank}] Train loss {train_loss: .4f}')
+        print(f'[GPU #{rank}] Validation loss {avg_loss: .4f}')
+        print(f'[GPU #{rank}] Average distance with positive sample: {avg_dist_pos:.4f}')
+        print(f'[GPU #{rank}] Average distance with negative sample: {avg_dist_neg:.4f}')
 
-        torch.save(triplet_net.state_dict(), os.path.join(PATH.CHECKPOINT, f'{config.backbone}_{config.model}_checkpoint_e{epoch}.pth'))
+        if rank == 0:
+            torch.save(triplet_net.state_dict(), os.path.join(PATH.CHECKPOINT, f'{config.backbone}_{config.model}_checkpoint_e{epoch}.pth'))
     dist.destroy_process_group()
 
 

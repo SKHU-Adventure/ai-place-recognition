@@ -8,7 +8,8 @@ import numpy as np
 from torchvision import transforms
 from PIL import Image
 
-class CustomDataset(torch.utils.data.Dataset):
+
+class Nordland(torch.utils.data.Dataset):
     def __init__(self, config, data_path):
         self.window = config.window
         self.img_h = config.img_h
