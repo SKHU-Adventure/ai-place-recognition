@@ -100,7 +100,7 @@ def main():
             print(f'[Epoch {epoch}] Average distance with negative sample: {avg_dist_neg:.4f}')
             print(f'[Epoch {epoch}] ROC AUC: {roc_auc:.4f}')
             draw_roc_curve(fpr, tpr, os.path.join(PATH.VISUALIZATION, f'roc_curve_e{epoch}.png'), roc_auc)
-            torch.save(triplet_net.state_dict(), os.path.join(PATH.CHECKPOINT, f'{config.backbone}_{config.model}_checkpoint_e{epoch}.pth'))
+            torch.save(triplet_net.state_dict(), os.path.join(PATH.CHECKPOINT, f'{config.backbone}_{config.model}_{config.data}_checkpoint_e{epoch}.pth'))
     dist.destroy_process_group()
 
 
