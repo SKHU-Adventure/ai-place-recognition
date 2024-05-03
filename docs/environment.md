@@ -1,4 +1,4 @@
-# NVIDIA Driver 535 and other packages
+# NVIDIA Driver and other packages
 ```bash
 sudo apt update
 sudo apt upgrade
