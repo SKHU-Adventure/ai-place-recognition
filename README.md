@@ -19,8 +19,8 @@ cd ai-place-recognition
 
 ### Requirements
 
-The main branch works with **CUDA 11.6**, **CUDNN 8.9.5** with **Python 3.8**.
-Refer to the following command to install python requirements:
+The main branch works with **CUDA 12.1**, **CUDNN 8.9.2**, **NCCL 2.18.3** with **Python 3.8**.
+Refer to a [document](docs/environment.md) for pre-setting and then install requirements:
 
 ```bash
 pip install -r requirements.txt

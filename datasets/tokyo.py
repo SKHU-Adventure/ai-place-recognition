@@ -4,7 +4,6 @@ import glob
 import random
 import os
 import numpy as np
-from skimage import io
 from torchvision import transforms
 from PIL import Image
 
