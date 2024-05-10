@@ -43,7 +43,7 @@ def main():
     def quadruplet_loss(anc, pos, neg1, neg2, alpha1=0.5, alpha2=0.2):
         pos_dist = F.pairwise_distance(anc, pos, p=2)
         neg1_dist = F.pairwise_distance(anc, neg1, p=2)
-        neg2_dist = F.pairwise_distance(pos, neg2, p=2)
+        neg2_dist = F.pairwise_distance(neg1, neg2, p=2)
         loss1 = torch.relu(pos_dist - neg1_dist + alpha1)
         loss2 = torch.relu(pos_dist - neg2_dist + alpha2)
         loss = torch.mean(loss1 + loss2)
