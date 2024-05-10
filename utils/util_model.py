@@ -1,6 +1,14 @@
+import numpy as np
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import lightning.pytorch as pl
+from sklearn.metrics import roc_curve, auc
 
-class EmbedNet(nn.Module):
+from backbones import get_backbone
+from models import get_model
+
+class EmbedNet(pl.LightningModule):
     def __init__(self, backbone, model):
         super(EmbedNet, self).__init__()
         self.backbone = backbone
@@ -11,7 +19,7 @@ class EmbedNet(nn.Module):
         embedded_x = self.model(x)
         return embedded_x
 
-class TripletNet(nn.Module):
+class TripletNet(pl.LightningModule):
     def __init__(self, embed_net):
         super(TripletNet, self).__init__()
         self.embed_net = embed_net
@@ -24,3 +32,49 @@ class TripletNet(nn.Module):
 
     def feature_extract(self, x):
         return self.embed_net(x)
+    
+class LightningTripletNet(pl.LightningModule):
+    def __init__(self, config):
+        super(LightningTripletNet, self).__init__()
+        self.config = config
+        backbone = get_backbone(self.config.backbone)
+        model = get_model(self.config.model)
+        embed_net = EmbedNet(backbone, model)
+        self.triplet_net = TripletNet(embed_net)
+        self.validation_step_outputs = []
+
+    def forward(self, a, p, n):
+        return self.triplet_net(a, p, n)
+
+    def training_step(self, batch, batch_idx):
+        a, p, n = batch
+        embedded_a, embedded_p, embedded_n = self.triplet_net(a, p, n)
+        loss = nn.TripletMarginLoss(margin=self.config.margin)(embedded_a, embedded_p, embedded_n)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        a, p, n = batch
+        embedded_a, embedded_p, embedded_n = self.triplet_net(a, p, n)
+        loss = nn.TripletMarginLoss(margin=self.config.margin, reduction='none')(embedded_a, embedded_p, embedded_n)
+        dist_pos = F.pairwise_distance(embedded_a, embedded_p)
+        dist_neg = F.pairwise_distance(embedded_a, embedded_n)
+        self.validation_step_outputs.append((loss, dist_pos, dist_neg))
+        return loss, dist_pos, dist_neg
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.config.learning_rate)
+        return optimizer
+    
+    def on_validation_epoch_end(self):
+        loss = torch.cat([x for x, y, z in self.validation_step_outputs]).detach().cpu().numpy()
+        dist_pos = torch.cat([y for x, y, z in self.validation_step_outputs]).detach().cpu().numpy()
+        dist_neg = torch.cat([z for x, y, z in self.validation_step_outputs]).detach().cpu().numpy()
+        avg_loss = np.mean(loss)
+        avg_dist_pos = np.mean(dist_pos)
+        avg_dist_neg = np.mean(dist_neg)
+        y_true = np.concatenate([np.ones_like(dist_pos), np.zeros_like(dist_neg)])
+        y_scores = np.concatenate([dist_pos, dist_neg])
+        fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+        roc_auc = auc(fpr, tpr)
+        self.validation_step_outputs.clear()
+        return avg_loss, avg_dist_pos, avg_dist_neg, roc_auc
