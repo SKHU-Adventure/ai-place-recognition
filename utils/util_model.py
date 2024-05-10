@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import lightning.pytorch as pl
-from sklearn.metrics import roc_curve, auc
 
 from backbones import get_backbone
 from models import get_model
@@ -50,6 +49,7 @@ class LightningTripletNet(pl.LightningModule):
         a, p, n = batch
         embedded_a, embedded_p, embedded_n = self.triplet_net(a, p, n)
         loss = nn.TripletMarginLoss(margin=self.config.margin)(embedded_a, embedded_p, embedded_n)
+        self.log("train_loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -72,9 +72,8 @@ class LightningTripletNet(pl.LightningModule):
         avg_loss = np.mean(loss)
         avg_dist_pos = np.mean(dist_pos)
         avg_dist_neg = np.mean(dist_neg)
-        y_true = np.concatenate([np.ones_like(dist_pos), np.zeros_like(dist_neg)])
-        y_scores = np.concatenate([dist_pos, dist_neg])
-        fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-        roc_auc = auc(fpr, tpr)
         self.validation_step_outputs.clear()
-        return avg_loss, avg_dist_pos, avg_dist_neg, roc_auc
+        self.log("val_loss", avg_loss, prog_bar=True, logger=True, sync_dist=True)
+        self.log("dist_pos", avg_dist_pos, prog_bar=True, logger=True, sync_dist=True)
+        self.log("dist_neg", avg_dist_neg, prog_bar=True, logger=True, sync_dist=True)
+        return avg_loss, avg_dist_pos, avg_dist_neg
