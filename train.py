@@ -40,7 +40,7 @@ def main():
     embed_net = EmbedNet(backbone, model)
     quadruplet_net = DDP(QuadrupletNet(embed_net).to(device_id), device_ids=[device_id])
 
-    def quadruplet_loss(anc, pos, neg1, neg2, alpha1=0.5, alpha2=0.2):
+    def quadruplet_loss(anc, pos, neg1, neg2, alpha1=1.0, alpha2=0.5):
         pos_dist = F.pairwise_distance(anc, pos, p=2)
         neg1_dist = F.pairwise_distance(anc, neg1, p=2)
         neg2_dist = F.pairwise_distance(neg1, neg2, p=2)
@@ -49,7 +49,7 @@ def main():
         loss = torch.mean(loss1 + loss2)
         return loss
     
-    criterion = lambda a, p, n, an: quadruplet_loss(a, p, n, an, config.margin)
+    criterion = lambda a, p, n, an: quadruplet_loss(a, p, n, an)
     optimizer = torch.optim.Adam(quadruplet_net.parameters(), lr=config.learning_rate)
 
     os.makedirs(PATH.CHECKPOINT, exist_ok=True)
@@ -86,20 +86,23 @@ def main():
                 loss = criterion(anc_feat, pos_feat, neg1_feat, neg2_feat)
                 dist_pos = F.pairwise_distance(anc_feat, pos_feat).cpu().numpy()
                 dist_neg1 = F.pairwise_distance(anc_feat, neg1_feat).cpu().numpy()
-                dist_neg2 = F.pairwise_distance(anc_feat, neg2_feat).cpu().numpy()
+                #dist_neg2 = F.pairwise_distance(anc_feat, neg2_feat).cpu().numpy()
 
                 losses.update(loss.item(), anc.size(0))
                 dist_poses.update(np.mean(dist_pos), anc.size(0))
                 dist_neges1.update(np.mean(dist_neg1), anc.size(0))
-                dist_neges2.update(np.mean(dist_neg2), anc.size(0))
-                y_true.extend([1] * anc.size(0) + [0] * 2 * anc.size(0))
+                #dist_neges2.update(np.mean(dist_neg2), anc.size(0))
+                #y_true.extend([1] * anc.size(0) + [0] * 2 * anc.size(0))
+                y_true.extend([1] * anc.size(0))
+                y_true.extend([0] * anc.size(0))
                 y_scores.extend(dist_pos)
                 y_scores.extend(dist_neg1)
-                y_scores.extend(dist_neg2)
+                #y_scores.extend(dist_neg2)
 
         fpr, tpr, thresholds = roc_curve(y_true, -np.array(y_scores)) 
         roc_auc = auc(fpr, tpr)
-        return losses.avg, dist_poses.avg, (dist_neges1.avg + dist_neges2.avg) / 2, roc_auc, fpr, tpr
+        #return losses.avg, dist_poses.avg, (dist_neges1.avg + dist_neges2.avg) / 2, roc_auc, fpr, tpr
+        return losses.avg, dist_poses.avg, dist_neges1.avg, roc_auc, fpr, tpr
 
     for epoch in range(1, config.total_epoch + 1):
         train_sampler.set_epoch(epoch)
