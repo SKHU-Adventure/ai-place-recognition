@@ -1,10 +1,11 @@
 import os
 import lightning.pytorch as pl
-
+from pytorch_lightning.loggers import TensorBoardLogger
+import matplotlib.pyplot as plt
 from setup import config
 from utils.util_model import LightningTripletNet
 from utils.util_dataset import LightningDataModule
-
+import pandas as pd
 
 def main():
 
@@ -24,6 +25,7 @@ def main():
     lr_monitor_cb = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
 
     callbacks = [tqdm_cb, ckpt_cb, early_stopping_cb, lr_monitor_cb]
+    logger = TensorBoardLogger(save_dir=os.path.join(config.base_dir, "lightning_logs"), name='triplet_net')
 
     trainer = pl.Trainer(accelerator="gpu",
                         devices=config.gpu_ids,
@@ -32,11 +34,12 @@ def main():
                         use_distributed_sampler=True,
                         precision="16-mixed",
                         callbacks=callbacks,
-                        logger=True,
+                        logger=logger,
                         profiler="simple",
                         log_every_n_steps=1,
                         default_root_dir=config.base_dir)
     trainer.fit(triplet_net, dataset)
+    trainer.test(triplet_net, datamodule=dataset)
 
 if __name__ == '__main__':
     main()
