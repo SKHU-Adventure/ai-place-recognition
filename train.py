@@ -15,7 +15,10 @@ def main():
     tqdm_cb = pl.callbacks.TQDMProgressBar()
     ckpt_cb = pl.callbacks.ModelCheckpoint(
         filename="{epoch:02d}_",
-        save_last=True
+        monitor="val_loss",
+        mode="min",
+        save_top_k=1,
+        verbose=True
     )
     early_stopping_cb = pl.callbacks.EarlyStopping(
         monitor="val_loss",
