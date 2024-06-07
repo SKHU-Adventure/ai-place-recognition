@@ -30,7 +30,6 @@ class Tokyo(torch.utils.data.Dataset):
         for idx, img in enumerate(self.img_list):
             temp = []
             current_angle = int(img.split("_")[-1].split(".")[0])
-            angle_steps = [-30, 30]
             for angle in self.angle:
                 positive_angle = (current_angle + angle) % 360
                 tmp_path = img.split("_")
