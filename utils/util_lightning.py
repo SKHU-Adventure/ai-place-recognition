@@ -1,3 +1,4 @@
+import os
 import lightning.pytorch as pl
 
 def get_callbacks(config):
@@ -18,5 +19,5 @@ def get_callbacks(config):
     return callbacks
 
 def get_logger(config):
-    logger = pl.loggers.TensorBoardLogger(save_dir=os.path.join(config.base_dir, "lightning_logs"), name='triplet_net')
+    logger = pl.loggers.TensorBoardLogger(save_dir=os.path.join(config.base_dir, "lightning_logs"))
     return logger

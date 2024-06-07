@@ -4,7 +4,7 @@ import lightning.pytorch as pl
 from setup import config
 from utils.util_model import LightningTripletNet
 from utils.util_dataset import LightningDataModule
-from utils.util.lightning import get_callbacks, get_logger
+from utils.util_lightning import get_callbacks, get_logger
 
 
 def main():
