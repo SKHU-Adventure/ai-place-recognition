@@ -42,7 +42,6 @@ def main():
                         log_every_n_steps=1,
                         default_root_dir=config.base_dir)
     trainer.fit(triplet_net, dataset)
-    trainer.test(triplet_net, datamodule=dataset)
 
 if __name__ == '__main__':
     main()

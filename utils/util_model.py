@@ -3,12 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import lightning.pytorch as pl
-
+from torchvision import transforms
+from torchvision.utils import save_image
 from backbones import get_backbone
 from models import get_model
-
-from torchvision import transforms
-from PIL import Image
 import os
 
 class EmbedNet(pl.LightningModule):
@@ -35,7 +33,7 @@ class TripletNet(pl.LightningModule):
 
     def feature_extract(self, x):
         return self.embed_net(x)
-    
+
 class LightningTripletNet(pl.LightningModule):
     def __init__(self, config):
         super(LightningTripletNet, self).__init__()
@@ -69,7 +67,7 @@ class LightningTripletNet(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.config.learning_rate)
         return optimizer
-    
+
     def on_validation_epoch_end(self):
         loss = torch.cat([x for x, y, z in self.validation_step_outputs]).detach().cpu().numpy()
         dist_pos = torch.cat([y for x, y, z in self.validation_step_outputs]).detach().cpu().numpy()
@@ -110,7 +108,7 @@ class LightningTripletNet(pl.LightningModule):
 
     def save_images(self, anchor, positive, negative, batch_idx, img_idx, wrong):
         os.makedirs('misclassified', exist_ok=True)
-        wrong_str = f"{wrong:.2f}"  
+        wrong_str = f"{wrong:.2f}"
         self._save_image(anchor, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_1.png')
         self._save_image(positive, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_2.png')
         self._save_image(negative, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_3.png')
@@ -125,4 +123,3 @@ class LightningTripletNet(pl.LightningModule):
         ])
         inv_image = inv_transform(tensor)
         inv_image.save(filepath)
-    
