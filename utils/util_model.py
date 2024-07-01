@@ -96,22 +96,25 @@ class LightningTripletNet(pl.LightningModule):
             for i in range(len(dist_pos)):
                 if saved_count >= 10:
                     break
-                if dist_pos[i] > 1.0:
-                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_pos[i])
+                if dist_pos[i] > self.config.margin:
+                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_pos[i], 'pos')
                     saved_count += 1
-                elif dist_neg[i] < 1.0:
-                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_neg[i])
+                if dist_neg[i] < self.config.margin:
+                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_neg[i], 'neg')
                     saved_count += 1
             if saved_count >= 10:
                 break
         self.test_step_outputs.clear()
 
-    def save_images(self, anchor, positive, negative, batch_idx, img_idx, wrong):
+    def save_images(self, anchor, positive, negative, batch_idx, img_idx, wrong, label_type):
         os.makedirs('misclassified', exist_ok=True)
         wrong_str = f"{wrong:.2f}"
-        self._save_image(anchor, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_1.png')
-        self._save_image(positive, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_2.png')
-        self._save_image(negative, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_3.png')
+        if label_type == 'pos':
+            self._save_image(anchor, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_anchor_pos.png')
+            self._save_image(positive, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_positive.png')
+        elif label_type == 'neg':
+            self._save_image(anchor, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_anchor_neg.png')
+            self._save_image(negative, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_negative.png')
 
     def _save_image(self, tensor, filepath):
         inv_transform = transforms.Compose([
