@@ -7,7 +7,7 @@ from utils.util_dataset import LightningDataModule
 def main():
     dataset = LightningDataModule(config)
     dataset.setup('test')
-    triplet_net = LightningTripletNet.load_from_checkpoint("modelpath", config=config)
+    triplet_net = LightningTripletNet.load_from_checkpoint("/home/student4/ai-place-recognition/experiments/sample/lightning_logs/lightning_logs/version_0/checkpoints/epoch=09_.ckpt", config=config)
 
     trainer = pl.Trainer(accelerator="gpu",
                          devices=config.gpu_ids,
