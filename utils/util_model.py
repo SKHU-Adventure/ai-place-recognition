@@ -3,9 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import lightning.pytorch as pl
-
+from torchvision import transforms
 from backbones import get_backbone
 from models import get_model
+import os
 
 class EmbedNet(pl.LightningModule):
     def __init__(self, backbone, model):
@@ -77,3 +78,49 @@ class LightningTripletNet(pl.LightningModule):
         self.log("dist_pos", avg_dist_pos, prog_bar=True, logger=True, sync_dist=True)
         self.log("dist_neg", avg_dist_neg, prog_bar=True, logger=True, sync_dist=True)
         return avg_loss, avg_dist_pos, avg_dist_neg
+
+    def test_step(self, batch, batch_idx):
+        a, p, n = batch
+        embedded_a, embedded_p, embedded_n = self.triplet_net(a, p, n)
+        loss = nn.TripletMarginLoss(margin=self.config.margin, reduction='none')(embedded_a, embedded_p, embedded_n)
+        dist_pos = F.pairwise_distance(embedded_a, embedded_p)
+        dist_neg = F.pairwise_distance(embedded_a, embedded_n)
+        self.test_step_outputs.append((a, p, n, dist_pos, dist_neg))
+        return loss
+
+    def on_test_epoch_end(self):
+        saved_count = 0
+        for batch_idx, (a, p, n, dist_pos, dist_neg) in enumerate(self.test_step_outputs):
+            for i in range(len(dist_pos)):
+                if saved_count >= 10:
+                    break
+                if dist_pos[i] > self.config.margin:
+                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_pos[i], 'pos')
+                    saved_count += 1
+                if dist_neg[i] < self.config.margin:
+                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_neg[i], 'neg')
+                    saved_count += 1
+            if saved_count >= 10:
+                break
+        self.test_step_outputs.clear()
+
+    def save_images(self, anchor, positive, negative, batch_idx, img_idx, wrong, label_type):
+        os.makedirs('misclassified', exist_ok=True)
+        wrong_str = f"{wrong:.2f}"
+        if label_type == 'pos':
+            self._save_image(anchor, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_anchor_pos.png')
+            self._save_image(positive, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_positive.png')
+        elif label_type == 'neg':
+            self._save_image(anchor, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_anchor_neg.png')
+            self._save_image(negative, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_negative.png')
+
+    def _save_image(self, tensor, filepath):
+        inv_transform = transforms.Compose([
+            transforms.Normalize(
+                mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
+                std=[1 / 0.229, 1 / 0.224, 1 / 0.225]
+            ),
+            transforms.ToPILImage()
+        ])
+        inv_image = inv_transform(tensor)
+        inv_image.save(filepath)
