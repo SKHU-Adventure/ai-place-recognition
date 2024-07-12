@@ -81,6 +81,14 @@ class LightningTripletNet(pl.LightningModule):
         self.log("val_loss", avg_loss, prog_bar=True, logger=True, sync_dist=True)
         self.log("dist_pos", avg_dist_pos, prog_bar=True, logger=True, sync_dist=True)
         self.log("dist_neg", avg_dist_neg, prog_bar=True, logger=True, sync_dist=True)
+
+        y_true = np.concatenate([np.ones_like(dist_pos), np.zeros_like(dist_neg)])
+        y_scores = np.concatenate([dist_pos, dist_neg])
+        fpr, tpr, thresholds = roc_curve(y_true, -y_scores)
+        roc_auc = auc(fpr, tpr)
+        draw_roc_curve(fpr, tpr, save_path=f'roc_curve_epoch_{self.current_epoch}.png', roc_auc=roc_auc)
+
+
         return avg_loss, avg_dist_pos, avg_dist_neg
 
     def test_step(self, batch, batch_idx):
@@ -108,6 +116,12 @@ class LightningTripletNet(pl.LightningModule):
                 break
         self.test_step_outputs.clear()
 
+        y_true = np.concatenate([np.ones_like(dist_pos), np.zeros_like(dist_neg)])
+        y_scores = np.concatenate([dist_pos, dist_neg])
+        fpr, tpr, thresholds = roc_curve(y_true, -y_scores) 
+        roc_auc = auc(fpr, tpr)
+        draw_roc_curve(fpr, tpr, save_path='roc_curve_test.png', roc_auc=roc_auc)
+
     def save_images(self, anchor, positive, negative, batch_idx, img_idx, wrong, label_type):
         os.makedirs('misclassified', exist_ok=True)
         wrong_str = f"{wrong:.2f}"
@@ -117,6 +131,7 @@ class LightningTripletNet(pl.LightningModule):
         elif label_type == 'neg':
             self._save_image(anchor, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_anchor_neg.png')
             self._save_image(negative, f'misclassified/{batch_idx}_{img_idx}_{wrong_str}_negative.png')
+        
 
     def _save_image(self, tensor, filepath):
         inv_transform = transforms.Compose([
