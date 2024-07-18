@@ -103,6 +103,7 @@ class LightningTripletNet(pl.LightningModule):
     def on_test_epoch_end(self):
         saved_count = 0
         for batch_idx, (a, p, n, dist_pos, dist_neg) in enumerate(self.test_step_outputs):
+            
             for i in range(len(dist_pos)):
                 if saved_count >= 10:
                     break
@@ -114,6 +115,9 @@ class LightningTripletNet(pl.LightningModule):
                     saved_count += 1
             if saved_count >= 10:
                 break
+
+        dist_pos = torch.cat([a for x, y, z, a, r in self.test_step_outputs]).detach().cpu().numpy()
+        dist_neg = torch.cat([r for x, y, z, a, r in self.test_step_outputs]).detach().cpu().numpy()
         self.test_step_outputs.clear()
 
         y_true = np.concatenate([np.ones_like(dist_pos), np.zeros_like(dist_neg)])
