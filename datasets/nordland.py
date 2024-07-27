@@ -78,7 +78,7 @@ class Nordland(torch.utils.data.Dataset):
             number_dst = random.randrange(self.maxnum[section_dst][0], self.maxnum[section_dst][1]+1)
             if section_src != section_dst or abs(number_src - number_dst) > self.window:
                 break
-
+            
         path = path.replace(season_src, season_dst)
         path = path.replace(section_src, section_dst)
         path = path.replace(str(number_src)+ext, str(number_dst)+ext)
