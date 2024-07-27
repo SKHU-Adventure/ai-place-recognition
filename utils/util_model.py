@@ -4,12 +4,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import lightning.pytorch as pl
 from torchvision import transforms
-from torchvision.utils import save_image
 from backbones import get_backbone
 from models import get_model
 import os
 from sklearn.metrics import roc_curve, auc
 from utils.util_vis import draw_roc_curve
+from setup import config
 
 class EmbedNet(pl.LightningModule):
     def __init__(self, backbone, model):
@@ -86,7 +86,7 @@ class LightningTripletNet(pl.LightningModule):
         y_scores = np.concatenate([dist_pos, dist_neg])
         fpr, tpr, thresholds = roc_curve(y_true, -y_scores)
         roc_auc = auc(fpr, tpr)
-        draw_roc_curve(fpr, tpr, save_path=f'roc_curve_epoch_{self.current_epoch}.png', roc_auc=roc_auc)
+        draw_roc_curve(fpr, tpr, save_path=config.base_dir+f'/roc_curve_epoch_{self.current_epoch}.png', roc_auc=roc_auc)
 
 
         return avg_loss, avg_dist_pos, avg_dist_neg
@@ -124,7 +124,7 @@ class LightningTripletNet(pl.LightningModule):
         y_scores = np.concatenate([dist_pos, dist_neg])
         fpr, tpr, thresholds = roc_curve(y_true, -y_scores) 
         roc_auc = auc(fpr, tpr)
-        draw_roc_curve(fpr, tpr, save_path='roc_curve_test.png', roc_auc=roc_auc)
+        draw_roc_curve(fpr, tpr, save_path=config.base_dir+'/roc_curve_test.png', roc_auc=roc_auc)
 
     def save_images(self, anchor, positive, negative, batch_idx, img_idx, wrong, label_type):
         os.makedirs('misclassified', exist_ok=True)
