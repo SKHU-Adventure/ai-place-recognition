@@ -9,7 +9,7 @@ def get_callbacks(config):
     )
     early_stopping_cb = pl.callbacks.EarlyStopping(
         monitor="val_loss",
-        patience=3,
+        patience=5,
         mode="min"
     )
     lr_monitor_cb = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
