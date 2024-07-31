@@ -23,8 +23,11 @@ class SKHU(torch.utils.data.Dataset):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
-        self.images = glob.glob(os.path.join(self.data_path, "*/*.jpg"))
-        self.sections = [(f.path, f.name) for f in os.scandir(data_path) if f.is_dir()]
+        self.images = glob.glob(os.path.join(self.data_path, "*/*/*/*.jpg"))#weather/time/section/_.jpg
+        #self.seasons = [(f.path, f.name) for f in os.scandir(data_path) if f.is_dir()]
+        self.weathers = [(f.path, f.name) for f in os.scandir(data_path) if f.is_dir()]
+        self.times = [(f.path, f.name) for f in os.scandir(self.weathers[0][0]) if f.is_dir()]
+        self.sections = [(f.path, f.name) for f in os.scandir(self.times[0][0]) if f.is_dir()]
         self.maxnum = {}
         for path, name in self.sections:
             files = natsorted(glob.glob(os.path.join(path, "*.jpg")))
@@ -51,32 +54,45 @@ class SKHU(torch.utils.data.Dataset):
     
         
     def get_positive(self, path):
+        weather_src = path.split("/")[-4]
+        time_src = path.split("/")[-3]
         section_src = path.split("/")[-2]
         number_src = int(os.path.splitext(path.split("/")[-1])[0][6:])
         ext = os.path.splitext(path.split("/")[-1])[1]
 
         while True:
+            weather_dst = random.choice(self.weathers)[1]
+            time_dst = random.choice(self.times)[1]
             number_dst = random.randrange(max(self.maxnum[section_src][0], number_src-self.window), min(number_src+self.window+1, self.maxnum[section_src][1]))
             if number_src != number_dst:
                 break
 
-        path = path.replace(makefour(number_src)+ext, makefour(number_dst)+ext)
+        path = path.replace(weather_src, weather_dst)
+        path = path.replace(time_src, time_dst)
+        path = path.replace(str(number_src).zfill(4)+ext, str(number_dst).zfill(4)+ext)
 
         return path
 
     def get_negative(self, path):
+        weather_src = path.split("/")[-4]
+        time_src = path.split("/")[-3]
         section_src = path.split("/")[-2]
         number_src = int(os.path.splitext(path.split("/")[-1])[0][6:])
         ext = os.path.splitext(path.split("/")[-1])[1]
 
         while True:
+            weather_dst = random.choice(self.weathers)[1]
+            time_dst = random.choice(self.times)[1]
             section_dst = random.choice(self.sections)[1]
             number_dst = random.randrange(self.maxnum[section_dst][0], self.maxnum[section_dst][1]+1)
-            if abs(number_src - number_dst) > self.window:
+            if section_src != section_dst or abs(number_src - number_dst) > self.window:
                 break
 
-        #path = path.replace(section_src, section_dst)
-        path = path.replace(makefour(number_src)+ext, makefour(number_dst)+ext)
+        path = path.replace(weather_src, weather_dst)
+        path = path.replace(time_src, time_dst)
+        path = path.replace(section_src, section_dst)
+        path = path.replace(str(number_src).zfill(4)+ext, str(number_dst).zfill(4)+ext)
+
 
         return path
     
