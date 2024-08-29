@@ -13,11 +13,11 @@ def get_callbacks(config):
         mode="min"
     )
     lr_monitor_cb = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
-
     callbacks = [tqdm_cb, ckpt_cb, early_stopping_cb, lr_monitor_cb]
-
     return callbacks
 
 def get_logger(config):
-    logger = pl.loggers.TensorBoardLogger(save_dir=os.path.join(config.base_dir, "lightning_logs"))
+    # config['COMMON']['base_dir']로 수정
+    base_dir = config['COMMON']['base_dir']
+    logger = pl.loggers.TensorBoardLogger(save_dir=os.path.join(base_dir, "lightning_logs"))
     return logger
