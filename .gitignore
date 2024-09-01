@@ -162,5 +162,7 @@ cython_debug/
 experiments/
 !experiments/sample/
 misclassified/
+
+myenv/
 /*.png
 misclassified*/
