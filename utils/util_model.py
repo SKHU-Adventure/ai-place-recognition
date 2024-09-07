@@ -7,8 +7,8 @@ from torchvision import transforms
 from backbones import get_backbone
 from models import get_model
 import os
-from sklearn.metrics import roc_curve, auc
-from utils.util_vis import draw_roc_curve
+from sklearn.metrics import roc_curve, auc, confusion_matrix
+from utils.util_vis import draw_roc_curve, draw_confusion_matrix, find_best_threshold
 from setup import config
 
 class EmbedNet(pl.LightningModule):
@@ -86,8 +86,11 @@ class LightningTripletNet(pl.LightningModule):
         y_scores = np.concatenate([dist_pos, dist_neg])
         fpr, tpr, thresholds = roc_curve(y_true, -y_scores)
         roc_auc = auc(fpr, tpr)
-        draw_roc_curve(fpr, tpr, save_path=config.base_dir+f'/roc_curve_epoch_{self.current_epoch}.png', roc_auc=roc_auc)
-
+        draw_roc_curve(fpr, tpr, thresholds, save_path=config.base_dir+f'/roc_curve_epoch_{self.current_epoch}.png', roc_auc=roc_auc)
+        best_threshold = find_best_threshold(fpr, tpr, thresholds)
+        y_pred = (-y_scores >= best_threshold).astype(int)
+        cm = confusion_matrix(y_true, y_pred)
+        draw_confusion_matrix(cm, best_threshold, save_path=config.base_dir+f'/confusion_matrix_epoch_{self.current_epoch}.png')
 
         return avg_loss, avg_dist_pos, avg_dist_neg
 
@@ -124,7 +127,11 @@ class LightningTripletNet(pl.LightningModule):
         y_scores = np.concatenate([dist_pos, dist_neg])
         fpr, tpr, thresholds = roc_curve(y_true, -y_scores) 
         roc_auc = auc(fpr, tpr)
-        draw_roc_curve(fpr, tpr, save_path=config.base_dir+'/roc_curve_test.png', roc_auc=roc_auc)
+        draw_roc_curve(fpr, tpr, thresholds, save_path=config.base_dir+'/roc_curve_test.png', roc_auc=roc_auc)
+        best_threshold = find_best_threshold(fpr, tpr, thresholds)
+        y_pred = (-y_scores >= best_threshold).astype(int)
+        cm = confusion_matrix(y_true, y_pred)
+        draw_confusion_matrix(cm, best_threshold, save_path=config.base_dir+f'/confusion_matrix.png')
 
     def save_images(self, anchor, positive, negative, batch_idx, img_idx, wrong, label_type):
         os.makedirs('misclassified', exist_ok=True)
