@@ -1,10 +1,9 @@
-import pandas as pd
+import os
+
 import torch
 from natsort import natsorted
 import glob
 import random
-import os
-import numpy as np
 from torchvision import transforms
 from PIL import Image
 
