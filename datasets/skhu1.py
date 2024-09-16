@@ -6,7 +6,7 @@ from natsort import natsorted
 from torchvision import transforms
 from PIL import Image
 
-class SKHU(torch.utils.data.Dataset):
+class SKHU1(torch.utils.data.Dataset):
     def __init__(self, config, data_path):
         self.window = config.window
         self.img_h = config.img_h
@@ -89,15 +89,3 @@ class SKHU(torch.utils.data.Dataset):
         path = path.replace(str(number_src).zfill(4)+ext, str(number_dst).zfill(4)+ext)
 
         return path
-
-def makefour(n):
-    sn = str(n)
-    l = len(sn)
-    if l == 1:
-        return '000' + sn
-    elif l == 2:
-        return '00' + sn
-    elif l == 3:
-        return '0' + sn
-    else:
-        return sn
