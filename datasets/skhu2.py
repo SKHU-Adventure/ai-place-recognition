@@ -36,11 +36,11 @@ class SKHU2(torch.utils.data.Dataset):
 
                         positive_folder = os.path.join(section.path, 'positive')
                         pos_images = glob.glob(os.path.join(positive_folder, '*.jpg'))
-                        self.maxnum[building_name][section_name]['positive'] = len(pos_images) - 1
+                        self.maxnum[building_name][section_name]['positive'] = len(pos_images)
 
                         negative_folder = os.path.join(section.path, 'negative')
                         neg_images = glob.glob(os.path.join(negative_folder, '*.jpg'))
-                        self.maxnum[building_name][section_name]['negative'] = len(neg_images) - 1
+                        self.maxnum[building_name][section_name]['negative'] = len(neg_images)
 
     def __len__(self):
         return len(self.images)
