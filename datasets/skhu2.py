@@ -8,7 +8,6 @@ from PIL import Image
 
 class SKHU2(torch.utils.data.Dataset):
     def __init__(self, config, data_path):
-        self.window = config.window
         self.img_h = config.img_h
         self.img_w = config.img_w
         self.batch_size = config.batch_size
@@ -20,10 +19,10 @@ class SKHU2(torch.utils.data.Dataset):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
-        self.images = glob.glob(os.path.join(self.data_path, "*/*/*/*.jpg"))
+        self.images = glob.glob(os.path.join(self.data_path, "*/*/positive/*.jpg"))
         self.buildings = [(f.path, f.name) for f in os.scandir(data_path) if f.is_dir()]
         self.sections = [(f.path, f.name) for f in os.scandir(self.buildings[0][0]) if f.is_dir()]
-        self.labels = [(f.path, f.name) for f in os.scandir(self.labels[0][0]) if f.is_dir()]
+        self.labels = [(f.path, f.name) for f in os.scandir(self.sections[0][0]) if f.is_dir()]
         self.maxnum = {}
 
         for building in os.scandir(data_path):
@@ -37,11 +36,11 @@ class SKHU2(torch.utils.data.Dataset):
 
                         positive_folder = os.path.join(section.path, 'positive')
                         pos_images = glob.glob(os.path.join(positive_folder, '*.jpg'))
-                        self.maxnum[building_name][section_name]['positive'] = len(pos_images)
+                        self.maxnum[building_name][section_name]['positive'] = len(pos_images) - 1
 
                         negative_folder = os.path.join(section.path, 'negative')
                         neg_images = glob.glob(os.path.join(negative_folder, '*.jpg'))
-                        self.maxnum[building_name][section_name]['negative'] = len(neg_images)    
+                        self.maxnum[building_name][section_name]['negative'] = len(neg_images) - 1
 
     def __len__(self):
         return len(self.images)
