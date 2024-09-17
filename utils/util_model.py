@@ -86,8 +86,8 @@ class LightningTripletNet(pl.LightningModule):
         y_scores = np.concatenate([dist_pos, dist_neg])
         fpr, tpr, thresholds = roc_curve(y_true, -y_scores)
         roc_auc = auc(fpr, tpr)
-        draw_roc_curve(fpr, tpr, thresholds, save_path=config.base_dir+f'/roc_curve_epoch_{self.current_epoch}.png', roc_auc=roc_auc)
         best_threshold = find_best_threshold(fpr, tpr, thresholds)
+        draw_roc_curve(fpr, tpr, thresholds, best_threshold=best_threshold, save_path=config.base_dir+f'/roc_curve_epoch_{self.current_epoch}.png', roc_auc=roc_auc)
         y_pred = (-y_scores >= best_threshold).astype(int)
         cm = confusion_matrix(y_true, y_pred)
         draw_confusion_matrix(cm, best_threshold, save_path=config.base_dir+f'/confusion_matrix_epoch_{self.current_epoch}.png')
@@ -104,21 +104,6 @@ class LightningTripletNet(pl.LightningModule):
         return loss
 
     def on_test_epoch_end(self):
-        saved_count = 0
-        for batch_idx, (a, p, n, dist_pos, dist_neg) in enumerate(self.test_step_outputs):
-            
-            for i in range(len(dist_pos)):
-                if saved_count >= 10:
-                    break
-                if dist_pos[i] > self.config.margin:
-                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_pos[i], 'pos')
-                    saved_count += 1
-                if dist_neg[i] < self.config.margin:
-                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_neg[i], 'neg')
-                    saved_count += 1
-            if saved_count >= 10:
-                break
-
         dist_pos = torch.cat([a for x, y, z, a, r in self.test_step_outputs]).detach().cpu().numpy()
         dist_neg = torch.cat([r for x, y, z, a, r in self.test_step_outputs]).detach().cpu().numpy()
         self.test_step_outputs.clear()
@@ -127,11 +112,26 @@ class LightningTripletNet(pl.LightningModule):
         y_scores = np.concatenate([dist_pos, dist_neg])
         fpr, tpr, thresholds = roc_curve(y_true, -y_scores) 
         roc_auc = auc(fpr, tpr)
-        draw_roc_curve(fpr, tpr, thresholds, save_path=config.base_dir+'/roc_curve_test.png', roc_auc=roc_auc)
         best_threshold = find_best_threshold(fpr, tpr, thresholds)
+        draw_roc_curve(fpr, tpr, thresholds, best_threshold=best_threshold, save_path=config.base_dir+'/roc_curve_test.png', roc_auc=roc_auc)
         y_pred = (-y_scores >= best_threshold).astype(int)
         cm = confusion_matrix(y_true, y_pred)
         draw_confusion_matrix(cm, best_threshold, save_path=config.base_dir+f'/confusion_matrix.png')
+
+        saved_count = 0
+        for batch_idx, (a, p, n, dist_pos, dist_neg) in enumerate(self.test_step_outputs):
+            
+            for i in range(len(dist_pos)):
+                if saved_count >= 10:
+                    break
+                if dist_pos[i] >= best_threshold:
+                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_pos[i], 'pos')
+                    saved_count += 1
+                if dist_neg[i] < best_threshold:
+                    self.save_images(a[i], p[i], n[i], batch_idx, i, dist_neg[i], 'neg')
+                    saved_count += 1
+            if saved_count >= 10:
+                break
 
     def save_images(self, anchor, positive, negative, batch_idx, img_idx, wrong, label_type):
         os.makedirs('misclassified', exist_ok=True)
