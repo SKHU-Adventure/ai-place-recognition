@@ -17,12 +17,14 @@ def draw_roc_curve(fpr, tpr, thresholds, best_threshold, save_path='./roc_curve.
     plt.title('Receiver Operating Characteristic')
     plt.legend(loc="lower right")
     plt.savefig(save_path)
+    plt.close()
 
 def draw_confusion_matrix(cm, threshold, save_path='./confusion_matrix.png'):
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot(cmap=plt.cm.Blues)
     plt.title(f'Confusion Matrix at Threshold {-threshold:.4f}')
     plt.savefig(save_path)
+    plt.close()
 
 def find_best_threshold(fpr, tpr, thresholds):
     j_scores = tpr - fpr
